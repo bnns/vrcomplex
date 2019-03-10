@@ -3,7 +3,7 @@ import {
   complex
 } from './expansion'
 
-const maxDim = 4
+const maxDim = 6
 const eta = 50
 const height = 600
 const width = 600
@@ -13,7 +13,7 @@ const duration = 5000;
 const pointColor = '#a9553a'
 const edgeColor = '#444444'
 const ease = d3.easeCubic;
-const colorScale = d3.interpolateMagma;
+const colorScale = d3.interpolateGreys;
 let timer;
 const points = createPoints(numPoints, pointWidth, width, height)
 
@@ -104,6 +104,12 @@ function drawK(ctx, simplices = [], k) {
   }
 }
 
+function drawText(ctx, simplices = [], k) {
+  ctx.fillStyle = d3.color('black')
+  ctx.font = '14px serif';
+  ctx.fillText(simplices.length, 10 + k * 50, height - 25);
+}
+
 // animate the points to a given layout
 function animate(points) {
   // store the source position
@@ -134,6 +140,7 @@ function animate(points) {
 
     d3.range(maxDim).forEach((dim) => {
       drawK(ctx, vrComplex[`${dim}-simplices`], dim)
+      drawText(ctx, vrComplex[`${dim}-simplices`], dim)
     })
 
     // if this animation is over
