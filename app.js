@@ -10,12 +10,22 @@ const width = 600
 const numPoints = 120
 const pointWidth = 3
 const duration = 5000;
-const pointColor = '#a9553a'
-const edgeColor = '#444444'
 const ease = d3.easeCubic;
 const colorScale = d3.interpolateGreys;
-let timer;
 const points = createPoints(numPoints, pointWidth, width, height)
+const style = {
+  edge: {
+    color: '#444444'
+  },
+  point: {
+    color: '#a9553a'
+  },
+  text: {
+    left: 50,
+    padding: 50,
+    bottom: 25
+  }
+}
 
 function dimColor(dim) {
   return d3.lab(colorScale(dim / maxDim))
@@ -43,12 +53,13 @@ function createPoints(numPoints, pointWidth, width, height) {
 }
 
 function drawPoints(ctx, points) {
+  ctx.fillStyle = style.point.color;
+
   points.forEach((p) => {
     const {
       x,
       y,
     } = p;
-    ctx.fillStyle = pointColor;
     ctx.beginPath()
     ctx.arc(x, y, pointWidth, 0, 2 * Math.PI, true)
     ctx.fill()
@@ -59,7 +70,7 @@ function drawPoints(ctx, points) {
 }
 
 function drawEdges(ctx, edges) {
-  ctx.strokeStyle = edgeColor
+  ctx.strokeStyle = style.edge.color
 
   edges.forEach(([pa, pb]) => {
     ctx.beginPath()
@@ -91,7 +102,7 @@ function drawKFaces(ctx, faces, dim) {
   ctx.restore();
 }
 
-function drawK(ctx, simplices = [], k) {
+function drawSimplices(ctx, simplices = [], k) {
   switch (k) {
     case 0:
       drawPoints(ctx, simplices)
@@ -105,30 +116,30 @@ function drawK(ctx, simplices = [], k) {
 }
 
 function drawText(ctx, simplices = [], k) {
+  const {
+    left,
+    bottom,
+    padding
+  } = style.text
   ctx.fillStyle = d3.color('black')
   ctx.font = '14px serif';
-  ctx.fillText(simplices.length, 10 + k * 50, height - 25);
+  ctx.fillText(simplices.length, left + k * padding, height - bottom);
 }
 
-// animate the points to a given layout
 function animate(points) {
-  // store the source position
   points.forEach(point => {
     point.sx = point.x;
     point.sy = point.y;
   });
 
-  // get destination x and y position on each point
   points = randomLayout(points);
 
   const ctx = canvas.node().getContext('2d');
   ctx.save();
 
-  timer = d3.timer((elapsed) => {
-    // compute how far through the animation we are (0 to 1)
+  const timer = d3.timer((elapsed) => {
     const t = Math.min(1, ease(elapsed / duration));
 
-    // update point positions (interpolate between source and target)
     points.forEach(point => {
       point.x = point.sx * (1 - t) + point.tx * t;
       point.y = point.sy * (1 - t) + point.ty * t;
@@ -139,16 +150,12 @@ function animate(points) {
     ctx.clearRect(0, 0, width, height);
 
     d3.range(maxDim).forEach((dim) => {
-      drawK(ctx, vrComplex[`${dim}-simplices`], dim)
+      drawSimplices(ctx, vrComplex[`${dim}-simplices`], dim)
       drawText(ctx, vrComplex[`${dim}-simplices`], dim)
     })
 
-    // if this animation is over
     if (t === 1) {
-      // stop this timer for this layout and start a new one
       timer.stop();
-
-      // start animation for next layout
       animate(points);
     }
   });
