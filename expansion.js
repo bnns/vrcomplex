@@ -9,43 +9,47 @@ export function lowerNeighbors(G, u) {
 }
 
 export function intersect(setA, setB) {
-  return setA.filter((item) => setB.map(({id}) => id).includes(item.id))
+  return setA.filter((item) => setB.map(({
+    id
+  }) => id).includes(item.id))
 }
 
 function cofaces(G, k, tau, N, V) {
-  let newV = V.concat([tau])
-  if (tau.length >= k) {
-    return newV;
-  }
-  return N.reduce((acc, v) => {
-    const sigma = tau.length ? tau.concat([v]) : [v, tau]
-    const M = intersect(N, lowerNeighbors(G, v))
-    return cofaces(G, k, sigma, M, acc)
-  }, newV)
+  const newV = [...V, tau]
+  return tau.length >= k ?
+    newV :
+    N.reduce((acc, v) => {
+      const sigma = tau.length ? tau.concat([v]) : [v, tau]
+      const M = intersect(N, lowerNeighbors(G, v))
+      return cofaces(G, k, sigma, M, acc)
+    }, newV)
 }
 
 function incrementalVR(G, k) {
-  const complex = G.V
+  return G.V
     .reduce((acc, p, i) => {
       const N = lowerNeighbors(G, p)
       return cofaces(G, k, p, N, acc)
     }, [])
-  return complex
 }
 
 function appendSimplex(hash, s) {
   const key = `${s.length ? s.length - 1 : 0}-simplices`
   return hash[key] ?
-    Object.assign({}, hash, {[key]: hash[key].concat([s])}) :
-    Object.assign({}, hash, {[key]: [s]})
+    Object.assign({}, hash, {
+      [key]: [...hash[key], s]
+    }) :
+    Object.assign({}, hash, {
+      [key]: [s]
+    })
 }
 
 export function complex(points, maxK, eta) {
-  const G = {V: points, E: graph(points, eta)}
-  const vr = incrementalVR(G, maxK)
-  const complex = vr.reduce(appendSimplex, {})
-
-  return complex
+  const G = {
+    V: points,
+    E: graph(points, eta)
+  }
+  return incrementalVR(G, maxK).reduce(appendSimplex, {})
 }
 
 function dist(p1, p2) {
@@ -54,11 +58,12 @@ function dist(p1, p2) {
 
 function graph(points, eta) {
   // brute force exact
-  return points.reduce((pset, p, i, arr) => {
-    const pairs = arr
-          .reduce((s, pn, ind) => ind === i ? s : dist(p, pn) <= eta ? [pn, ...s] : s, [])
-          .filter((n) => !pset.find((pair) => (pair[0].id === n.id || pair[1].id === n.id) && (pair[0].id === p.id || pair[1].id === p.id)))
-          .map((n) => [p, n])
-    return pset.concat(pairs)
-  }, [])
+  const foldPairs = (p, i) => (s, pn, ind) => ind === i ? s : dist(p, pn) <= eta ? [pn, ...s] : s
+
+  return points.reduce(({remaining, pairs}, p, i) => {
+    const newPairs = remaining
+      .reduce(foldPairs(p, i), [])
+      .map((n) => [p, n])
+    return {remaining: remaining.slice(1), pairs: [...pairs, ...newPairs]}
+  }, {remaining: points, pairs: []}).pairs
 }

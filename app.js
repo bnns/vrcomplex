@@ -4,34 +4,44 @@ import {
 } from './expansion'
 
 const debugMode = false
-const maxDim = 2
-const eta = 80
+const maxDim = 3
+const eta = 60
 const height = 600
 const width = 600
-const numPoints = 72
+const numPoints = 48
 const pointWidth = 3
-const duration = 7000
+const duration = 10000
+const minShells = 3
 const circleRadius = (Math.min(width, height) / 4) - (10 * pointWidth)
 const ease = d3.easeCubic
-const colorScale = d3.interpolateMagma
+const colorScale = d3.interpolateCubehelixDefault
 const points = createPoints(numPoints, pointWidth, width, height)
 
-const coalesceEvery = 2
+const rotateEvery = 2
+const randomEvery = 10
 let animationSteps = 0
 
 const style = {
-  edge: {
+  background: {
     color: d3.color('#444444')
+  },
+  edge: {
+    color: d3.color('white')
   },
   point: {
-    color: d3.color('#444444')
+    color: d3.color('white')
   },
   text: {
-    color: d3.color('black'),
+    color: d3.color('white'),
     left: 50,
     padding: 50,
     bottom: 25
   }
+}
+
+function log(arg) {
+  console.log(arg)
+  return arg
 }
 
 function dimColor(dim) {
@@ -42,24 +52,53 @@ function dimOpacity(dim) {
   return 1 - (dim / maxDim)
 }
 
+const thetaDelta = (r) => {
+  return d3.scaleLinear()
+    .domain([0, width / 2])
+    .range([-10, 10])(r)
+}
+
+function rotate(points) {
+  return points.map((point, i) => {
+    return Object.assign({}, point, {
+      sr: point.r,
+      st: point.t,
+      tr: point.r,
+      tt: point.t + thetaDelta(point.r),
+      mode: 'polar'
+    })
+  })
+}
+
 function coalesce(points) {
-  const shells = Math.round(d3.randomUniform(1, 9)())
+  const thetaDelta = Math.round(d3.randomUniform(30, 90)())
+  const shells = Math.round(d3.randomUniform(minShells, 9)())
   const pointsPerShell = Math.round(points.length / shells)
   const currentShell = d3.scaleLinear()
-        .domain([0, points.length])
-        .range([1, shells + 1])
+    .domain([0, points.length])
+    .range([minShells, shells + 1])
   const thetaOffset = d3.scaleLinear()
-        .domain([1, shells])
-        .range([0, -90])
-  const radius = (i) => Math.round(circleRadius * currentShell(i) / shells)
+    .domain([minShells, shells])
+    .range([0, thetaDelta])
+  const radius = (i) => d3.scaleLinear()
+        .domain([minShells, shells])
+        .range([eta, circleRadius])(currentShell(i))
   const theta = (i) => thetaOffset(currentShell(i)) + (i % pointsPerShell) * (360 / pointsPerShell)
   return points.map((point, i) => {
-    const {x, y} = polarCartesian(radius(i), theta(i))
+    const r = radius(i)
+    const t = theta(i)
+    const {
+      x,
+      y
+    } = polarCartesian(r, t)
     return Object.assign({}, point, {
       tx: x + width / 2,
       ty: y + height / 2,
       sx: point.x,
-      sy: point.y
+      sy: point.y,
+      r,
+      t,
+      mode: 'cartesian'
     })
   })
 }
@@ -69,25 +108,50 @@ function randomLayout(points) {
     tx: Math.random() * (width - pointWidth),
     ty: Math.random() * (height - pointWidth),
     sx: point.x,
-    sy: point.y
+    sy: point.y,
+    mode: 'cartesian'
   }))
 }
 
 function assignBoundary(points) {
-  return animationSteps % coalesceEvery ?
-    coalesce(points) :
-    randomLayout(points)
+  if (animationSteps % randomEvery === 0) {
+    return randomLayout(points)
+  } else if (animationSteps % rotateEvery === 0) {
+    return rotate(points)
+  }
+
+  return coalesce(points)
 }
 
 function polarCartesian(r, theta) {
-  return {x: r * Math.cos(theta), y: r * Math.sin(theta) }
+  return {
+    x: r * Math.cos(theta),
+    y: r * Math.sin(theta)
+  }
+}
+
+const interpCartesian = (point, t) =>
+  Object.assign({}, point, {
+    x: d3.interpolate(point.sx, point.tx)(t),
+    y: d3.interpolate(point.sy, point.ty)(t)
+  })
+
+const interpPolar = (point, t) => {
+  const {
+    x,
+    y
+  } = polarCartesian(point.tr, d3.interpolate(point.st, point.tt)(t))
+  return Object.assign({}, point, {
+    x: x + width / 2,
+    y: y + height / 2
+  })
 }
 
 function interpolate(points, t) {
-  return points.map((point) => Object.assign({}, point, {
-    x: point.sx * (1 - t) + point.tx * t,
-    y: point.sy * (1 - t) + point.ty * t
-  }))
+  return points.map(({
+    mode,
+    ...point
+  }) => mode === 'polar' ? interpPolar(point, t) : interpCartesian(point, t))
 }
 
 function createPoints(numPoints, pointWidth, width, height) {
@@ -213,11 +277,13 @@ function animate(points) {
 }
 
 const screenScale = window.devicePixelRatio || 1
-const canvas = d3.select('body').append('canvas')
+const canvas = d3.select('#frame')
+  .append('canvas')
   .attr('width', width * screenScale)
   .attr('height', height * screenScale)
   .style('width', `${width}px`)
   .style('height', `${height}px`)
+  .style('background-color', style.background.color)
 
 const ctx = canvas.node().getContext('2d').scale(screenScale, screenScale)
 
