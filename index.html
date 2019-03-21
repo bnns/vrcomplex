@@ -6,9 +6,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <meta name="theme-color" content="#000000">
     <link rel="stylesheet" href="app.css" />
+    <link href="https://fonts.googleapis.com/css?family=Roboto+Condensed" rel="stylesheet">
   </head>
   <body>
     <div id="frame"></div>
+    <section id="notes">
+      <div class="text italic center">
+        <div>(approximate) periodic <a href="https://en.wikipedia.org/wiki/Vietoris%E2%80%93Rips_complex" target="_blank">Vietoris-Rips</a> complex</div>
+        <div class="credit"><a href="https://softwarethoughts.com" target="_blank">dennis yao</a></div>
+      </div>
+      <div class="text center mt1 border">
+        <div><b>k-simplices</b>: <span id="simplices"></span></div>
+        <div><b>max-k</b>: <span id="max-k"></span></div>
+        <div><b>δ (px)</b>: <span id="eta"></span></div>
+        <div><b>fps</b>: <span id="fps-output"></span></div>
+      </div>
+    </section>
     <script src="app.js"></script>
     <noscript>
       You need to enable JavaScript to run this app.

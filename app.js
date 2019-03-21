@@ -2,19 +2,21 @@ import * as d3 from 'd3'
 import {
   complex
 } from './expansion'
+import './perf'
 
 const debugMode = false
 const maxDim = 3
-const eta = 60
-const height = 600
-const width = 600
-const numPoints = 48
+const height = 500
+const width = 500
+const numPoints = 53
 const pointWidth = 3
 const duration = 10000
 const minShells = 3
+const maxShells = 9
 const circleRadius = (Math.min(width, height) / 4) - (10 * pointWidth)
+const eta = Math.round(.33 * circleRadius)
 const ease = d3.easeCubic
-const colorScale = d3.interpolateCubehelixDefault
+const colorScale = d3.interpolateMagma
 const points = createPoints(numPoints, pointWidth, width, height)
 
 const rotateEvery = 2
@@ -72,7 +74,7 @@ function rotate(points) {
 
 function coalesce(points) {
   const thetaDelta = Math.round(d3.randomUniform(30, 90)())
-  const shells = Math.round(d3.randomUniform(minShells, 9)())
+  const shells = Math.round(d3.randomUniform(minShells, maxShells)())
   const pointsPerShell = Math.round(points.length / shells)
   const currentShell = d3.scaleLinear()
     .domain([0, points.length])
@@ -81,7 +83,7 @@ function coalesce(points) {
     .domain([minShells, shells])
     .range([0, thetaDelta])
   const radius = (i) => d3.scaleLinear()
-        .domain([minShells, shells])
+        .domain([minShells, shells + 1])
         .range([eta, circleRadius])(currentShell(i))
   const theta = (i) => thetaOffset(currentShell(i)) + (i % pointsPerShell) * (360 / pointsPerShell)
   return points.map((point, i) => {
@@ -248,6 +250,16 @@ function drawText(ctx, simplices = [], k) {
   ctx.restore()
 }
 
+function writeParams() {
+  document.getElementById('eta').innerText = eta
+  document.getElementById('max-k').innerText = maxDim
+  document.getElementById('simplices').innerText = [...Array(maxDim).keys()].map(x => 0).join(', ')
+}
+
+function updateWrittenParams(complex) {
+  document.getElementById('simplices').innerText = Object.keys(complex).map(key => complex[key].length).join(', ')
+}
+
 function animate(points) {
   animationSteps++;
   const pointsWithBoundary = assignBoundary(points)
@@ -258,7 +270,7 @@ function animate(points) {
   const timer = d3.timer((elapsed) => {
     const t = Math.min(1, ease(elapsed / duration))
     const newPoints = interpolate(pointsWithBoundary, t)
-    const vrComplex = complex(newPoints, maxDim, eta)
+    const vrComplex = complex(newPoints, maxDim, eta, true)
 
     ctx.clearRect(0, 0, width, height)
 
@@ -266,6 +278,8 @@ function animate(points) {
       drawSimplices(ctx, vrComplex[`${dim}-simplices`], dim)
       debugMode && drawText(ctx, vrComplex[`${dim}-simplices`], dim)
     })
+
+    updateWrittenParams(vrComplex)
 
     debugMode && drawMetadata(ctx, maxDim, eta)
 
@@ -288,6 +302,7 @@ const canvas = d3.select('#frame')
 const ctx = canvas.node().getContext('2d').scale(screenScale, screenScale)
 
 animate(points)
+writeParams()
 
 if (module.hot) {
   module.hot.dispose(() => {

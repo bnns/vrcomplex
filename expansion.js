@@ -44,10 +44,10 @@ function appendSimplex(hash, s) {
     })
 }
 
-export function complex(points, maxK, eta) {
+export function complex(points, maxK, eta, approx) {
   const G = {
     V: points,
-    E: graph(points, eta)
+    E: graph(points, eta, maxK, approx)
   }
   return incrementalVR(G, maxK).reduce(appendSimplex, {})
 }
@@ -56,9 +56,10 @@ function dist(p1, p2) {
   return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2))
 }
 
-function graph(points, eta) {
+function graph(points, eta, maxK, approx) {
   // brute force exact
-  const foldPairs = (p, i) => (s, pn, ind) => ind === i ? s : dist(p, pn) <= eta ? [pn, ...s] : s
+  const stopEarly = (pairs) => approx && pairs >= 2 * maxK
+  const foldPairs = (p, i) => (s, pn, ind) => ind === i || stopEarly(s) ? s : dist(p, pn) <= eta ? [pn, ...s] : s
 
   return points.reduce(({remaining, pairs}, p, i) => {
     const newPairs = remaining
