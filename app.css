@@ -22,6 +22,7 @@ body {
 }
 
 .text {
+  letter-spacing: 1.2px;
   font-family: 'Roboto Condensed', sans-serif;
   display: flex;
   flex-direction: column;
@@ -46,6 +47,7 @@ body {
   align-self: center;
 }
 
+.credit.right,
 .text.right {
   align-self: flex-end;
 }

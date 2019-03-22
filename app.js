@@ -252,12 +252,15 @@ function drawText(ctx, simplices = [], k) {
 
 function writeParams() {
   document.getElementById('eta').innerText = eta
-  document.getElementById('max-k').innerText = maxDim
+  document.getElementById('max-k').innerText = maxDim - 1
   document.getElementById('simplices').innerText = [...Array(maxDim).keys()].map(x => 0).join(', ')
 }
 
 function updateWrittenParams(complex) {
-  document.getElementById('simplices').innerText = Object.keys(complex).map(key => complex[key].length).join(', ')
+  const [v, e, f] = Object.keys(complex).map(key => complex[key].length || 0)
+  isNaN(v - e + f) && console.log(v, e, f)
+  document.getElementById('simplices').innerText = [v, e, f].join(', ')
+  document.getElementById('euler').innerText = v - e + f
 }
 
 function animate(points) {
@@ -270,7 +273,7 @@ function animate(points) {
   const timer = d3.timer((elapsed) => {
     const t = Math.min(1, ease(elapsed / duration))
     const newPoints = interpolate(pointsWithBoundary, t)
-    const vrComplex = complex(newPoints, maxDim, eta, true)
+    const vrComplex = complex(newPoints, maxDim, eta, false)
 
     ctx.clearRect(0, 0, width, height)
 
